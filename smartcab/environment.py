@@ -4,6 +4,12 @@ from collections import OrderedDict
 
 from simulator import Simulator
 
+def sign(x):
+    if (x == 0):
+        return 0
+
+    return x / abs(x)
+
 class TrafficLight(object):
     """A traffic light that switches periodically."""
 
@@ -39,6 +45,10 @@ class Environment(object):
         self.t = 0
         self.agent_states = OrderedDict()
         self.status_text = ""
+
+        self.total_penalty = 0
+        self.total_reward = 0
+        self.total_steps = 0
 
         # Road network
         self.grid_size = (8, 6)  # (cols, rows)
@@ -77,6 +87,9 @@ class Environment(object):
     def reset(self):
         self.done = False
         self.t = 0
+        self.total_penalty = 0
+        self.total_reward = 0
+        self.total_steps = 0
 
         # Reset traffic lights
         for traffic_light in self.intersections.itervalues():
@@ -93,8 +106,17 @@ class Environment(object):
 
         start_heading = random.choice(self.valid_headings)
         deadline = self.compute_dist(start, destination) * 5
-        print "Environment.reset(): Trial set up with start = {}, destination = {}, deadline = {}".format(start, destination, deadline)
+        print "Environment.reset(): Trial set up with start = {}, heading = {}, destination = {}, deadline = {}".format(start, start_heading, destination, deadline)
+        delta_x = destination[0] - start[0]
+        delta_y = destination[1] - start[1]
+        heading_x = start_heading[0]
+        heading_y = start_heading[1]
+        self.distance_to_destination = abs(delta_x) + abs(delta_y)
 
+        if (delta_x == 0 and sign(delta_y) != sign(heading_y)) or (delta_y == 0 and sign(delta_x) != sign(heading_x)):
+            self.distance_to_destination += 2
+
+        print "Total distance:", self.distance_to_destination
         # Initialize agent(s)
         for agent in self.agent_states.iterkeys():
             self.agent_states[agent] = {
@@ -116,16 +138,19 @@ class Environment(object):
             agent.update(self.t)
 
         if self.done:
+            return "success"
             return  # primary agent might have reached destination
 
         if self.primary_agent is not None:
             agent_deadline = self.agent_states[self.primary_agent]['deadline']
             if agent_deadline <= self.hard_time_limit:
                 self.done = True
-                print "Environment.step(): Primary agent hit hard time limit ({})! Trial aborted.".format(self.hard_time_limit)
+                return "time_abort"
+                #print "Environment.step(): Primary agent hit hard time limit ({})! Trial aborted.".format(self.hard_time_limit)
             elif self.enforce_deadline and agent_deadline <= 0:
                 self.done = True
-                print "Environment.step(): Primary agent ran out of time! Trial aborted."
+                #print "Environment.step(): Primary agent ran out of time! Trial aborted."
+                return "deadline_abort"
             self.agent_states[self.primary_agent]['deadline'] = agent_deadline - 1
 
         self.t += 1
@@ -198,6 +223,8 @@ class Environment(object):
                 state['location'] = location
                 state['heading'] = heading
                 reward = 2.0 if action == agent.get_next_waypoint() else -0.5  # valid, but is it correct? (as per waypoint)
+                if agent is self.primary_agent:
+                    self.total_steps += 1
             else:
                 # Valid null move
                 reward = 0.0
@@ -205,14 +232,20 @@ class Environment(object):
             # Invalid move
             reward = -1.0
 
+
         if agent is self.primary_agent:
             if state['location'] == state['destination']:
                 if state['deadline'] >= 0:
                     reward += 10  # bonus
                 self.done = True
-                print "Environment.act(): Primary agent has reached destination!"  # [debug]
+                #print "Environment.act(): Primary agent has reached destination!"  # [debug]
             self.status_text = "trial: {}\n state: {} \naction: {} reward: {}".format(agent.trial, agent.get_state(), action, reward)
             print "Environment.act() [POST]: location: {}, heading: {}, action: {}, reward: {}".format(location, heading, action, reward)  # [debug]
+
+            self.total_reward += reward
+
+            if reward < 0:
+                self.total_penalty -= reward
 
         return reward
 

@@ -36,6 +36,8 @@ class Simulator(object):
         self.last_updated = 0.0
         self.update_delay = update_delay  # duration between each step (in secs)
 
+        self.results = []
+
         self.display = display
         if self.display:
             try:
@@ -89,7 +91,7 @@ class Simulator(object):
 
                     # Update environment
                     if self.current_time - self.last_updated >= self.update_delay:
-                        self.env.step()
+                        result = self.env.step()
                         self.last_updated = self.current_time
 
                     # Render GUI and sleep
@@ -100,10 +102,29 @@ class Simulator(object):
                     self.quit = True
                 finally:
                     if self.quit or self.env.done:
+                        if result == "success":
+                            success = 1
+                        else:
+                            success = 0
+
+                        result_dict = {}
+                        result_dict["trial"] = trial
+                        result_dict["total_distance"] = self.env.distance_to_destination
+                        result_dict["success"] = success
+                        result_dict["total_steps"] = self.env.total_steps
+                        result_dict["total_reward"] =  self.env.total_reward
+                        result_dict["total_penalty"] = self.env.total_penalty
+                        print result_dict
+                        self.results.append(result_dict)
+
                         break
+
 
             if self.quit:
                 break
+
+        self.print_stats()
+
 
     def render(self):
         # Clear screen
@@ -169,3 +190,22 @@ class Simulator(object):
             self.pygame.time.wait(self.frame_delay)
         self.screen.blit(self.font.render(pause_text, True, self.bg_color, self.bg_color), (100, self.height - 40))
         self.start_time += (time.time() - abs_pause_time)
+
+    def calc_stats(self, n):
+        success_count = 0
+        mean_reward = 0
+        mean_penalty = 0
+        total_penalty = 0
+        total_steps = 0
+        total_distance = 0
+        for result in self.results[-n:]:
+            success_count += result["success"] == 1
+            total_penalty += result["total_penalty"]
+            total_steps += result["total_steps"]
+            total_distance += result["total_distance"]
+
+        return (float(success_count) / n, float(total_penalty) / total_steps, float(total_steps) / total_distance)
+
+    def print_stats(self):
+        for i in (10, 20, 30, 40, 50):
+            print "Last ", i, "trials: ", self.calc_stats(i)
