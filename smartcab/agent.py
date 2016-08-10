@@ -13,8 +13,10 @@ class LearningAgent(Agent):
         # TODO: Initialize any additional variables here
         self.qtable = {}
         self.alpha = 0.95
-        self.epsilon = 0.97
-        self.gamma = 0.9
+        self.alpha_factor = 0.95
+        self.epsilon = 0.95
+        self.epsilon_factor = 0.95
+        self.gamma = 0.0
         self.total_reward = 0
         self.last_state = None
         self.state = None
@@ -24,10 +26,8 @@ class LearningAgent(Agent):
 
     def reset(self, destination=None):
         self.planner.route_to(destination)
-        self.alpha = max(0.1, self.alpha * 0.95)
-        self.epsilon *= 0.97
-        print "Total Reward:", self.total_reward
-        print "alpha: ", self.alpha
+        self.alpha = max(0.1, self.alpha * self.alpha_factor)
+        self.epsilon *= self.epsilon_factor
         self.total_reward = 0
         self.last_action = None
         self.last_state = None
