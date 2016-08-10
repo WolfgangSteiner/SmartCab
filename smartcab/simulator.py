@@ -61,10 +61,16 @@ class Simulator(object):
                 self.display = False
                 print "Simulator.__init__(): Error initializing GUI objects; display disabled.\n{}: {}".format(e.__class__.__name__, e)
 
+    def run_experiments(self, n_experiments=10):
+        self.current_experiment_results = []
+        for i in range(0,n_experiments):
+            self.run(n_trials=100)
+
+
     def run(self, n_trials=1):
         self.quit = False
         for trial in xrange(n_trials):
-            print "Simulator.run(): Trial {}".format(trial)  # [debug]
+            #print "Simulator.run(): Trial {}".format(trial)  # [debug]
             self.env.reset()
             self.current_time = 0.0
             self.last_updated = 0.0
@@ -114,7 +120,6 @@ class Simulator(object):
                         result_dict["total_steps"] = self.env.total_steps
                         result_dict["total_reward"] =  self.env.total_reward
                         result_dict["total_penalty"] = self.env.total_penalty
-                        print result_dict
                         self.results.append(result_dict)
 
                         break
@@ -122,8 +127,6 @@ class Simulator(object):
 
             if self.quit:
                 break
-
-        self.print_stats()
 
 
     def render(self):
@@ -204,8 +207,8 @@ class Simulator(object):
             total_steps += result["total_steps"]
             total_distance += result["total_distance"]
 
-        return (float(success_count) / n, float(total_penalty) / total_steps, float(total_steps) / total_distance)
+        return [float(success_count) / n, float(total_penalty) / total_steps, float(total_distance) / total_steps]
 
     def print_stats(self):
         for i in (10, 20, 30, 40, 50):
-            print "Last ", i, "trials: ", self.calc_stats(i)
+            print self.env.primary_agent.alpha_factor, self.env.primary_agent.gamma, self.env.primary_agent.epsilon_factor, "Last ", i, "trials: ", self.calc_stats(i)

@@ -3,6 +3,11 @@ from environment import Agent, Environment
 from planner import RoutePlanner
 from simulator import Simulator
 
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+
+
 class LearningAgent(Agent):
     """An agent that learns to drive in the smartcab world."""
 
@@ -35,6 +40,14 @@ class LearningAgent(Agent):
         self.last_reward = 0
         self.trial += 1
         # TODO: Prepare for a new trip; reset any variables here, if required
+
+    def new_experiment(self, alpha, epsilon, gamma):
+        self.qtable = {}
+        self.reset()
+        self.alpha = self.alpha_factor = alpha
+        self.epsilon = self.epsilon_factor = epsilon
+        self.gamma = gamma
+
 
     def get_max_q(self, a_state):
         max_q = 0
@@ -116,6 +129,29 @@ class LearningAgent(Agent):
         #print "LearningAgent.update(): deadline = {}, inputs = {}, action = {}, reward = {}".format(deadline, inputs, action, reward)  # [debug]
 
 
+def run_experiment(simulator, agent, alpha, epsilon, gamma):
+    df = pd.DataFrame(columns=['success', 'penalty_per_step', 'efficiency']);
+    print "Running experiment for alpha = {}, epsilon = {}, gamma = {}".format(alpha,epsilon, gamma)
+
+    for i in range(0,10):
+        agent.new_experiment(alpha, epsilon, gamma)
+        simulator.run(n_trials=100)  # run for a specified number of trials
+        result = simulator.calc_stats(10)
+        print result
+        df.loc[i] = result
+
+    print
+
+    df = df.mean()
+    result = pd.DataFrame(columns=['alpha', 'epsilon', 'gamma', 'success', 'penalty_per_step', 'efficiency']);
+    result.loc[0] = [alpha, epsilon, gamma, df['success'], df['penalty_per_step'], df['efficiency']]
+    print result
+    print
+    print
+
+    return result
+
+
 def run():
     """Run the agent for a finite number of trials."""
 
@@ -129,7 +165,16 @@ def run():
     sim = Simulator(e, update_delay=0.0, display=False)  # create simulator (uses pygame when display=True, if available)
     # NOTE: To speed up simulation, reduce update_delay and/or set display=False
 
-    sim.run(n_trials=100)  # run for a specified number of trials
+    df = pd.DataFrame(columns=['alpha', 'epsilon', 'gamma', 'success', 'penalty_per_step', 'efficiency']);
+
+    for alpha in (0.95, 0.90, 0.85, 0.80):
+        for gamma in (0.75, 0.5, 0.25, 0.125, 0.0):
+            result = run_experiment(sim, a, alpha, 0.95, gamma)
+            df = df.append(result, ignore_index=True)
+
+    print df.to_csv()
+
+
     # NOTE: To quit midway, press Esc or close pygame window, or hit Ctrl+C on the command-line
 
 

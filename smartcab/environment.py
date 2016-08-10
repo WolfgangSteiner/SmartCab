@@ -106,7 +106,7 @@ class Environment(object):
 
         start_heading = random.choice(self.valid_headings)
         deadline = self.compute_dist(start, destination) * 5
-        print "Environment.reset(): Trial set up with start = {}, heading = {}, destination = {}, deadline = {}".format(start, start_heading, destination, deadline)
+        #print "Environment.reset(): Trial set up with start = {}, heading = {}, destination = {}, deadline = {}".format(start, start_heading, destination, deadline)
         delta_x = destination[0] - start[0]
         delta_y = destination[1] - start[1]
         heading_x = start_heading[0]
@@ -116,7 +116,7 @@ class Environment(object):
         if (delta_x == 0 and sign(delta_y) != sign(heading_y)) or (delta_y == 0 and sign(delta_x) != sign(heading_x)):
             self.distance_to_destination += 2
 
-        print "Total distance:", self.distance_to_destination
+        #print "Total distance:", self.distance_to_destination
         # Initialize agent(s)
         for agent in self.agent_states.iterkeys():
             self.agent_states[agent] = {
@@ -240,7 +240,7 @@ class Environment(object):
                 self.done = True
                 #print "Environment.act(): Primary agent has reached destination!"  # [debug]
             self.status_text = "trial: {}\n state: {} \naction: {} reward: {}".format(agent.trial, agent.get_state(), action, reward)
-            print "Environment.act() [POST]: location: {}, heading: {}, action: {}, reward: {}".format(location, heading, action, reward)  # [debug]
+            #print "Environment.act() [POST]: location: {}, heading: {}, action: {}, reward: {}".format(location, heading, action, reward)  # [debug]
 
             self.total_reward += reward
 
@@ -264,6 +264,9 @@ class Agent(object):
         self.color = 'cyan'
 
     def reset(self, destination=None):
+        pass
+
+    def new_experiment(self):
         pass
 
     def update(self, t):
