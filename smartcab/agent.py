@@ -95,9 +95,18 @@ class LearningAgent(Agent):
 
         # TODO: Learn policy based on state, action, reward
         #max_q = self.get_max_q(self.state)
-        q_value = self.qtable[self.state][action]
-        q_value += self.alpha * (reward - q_value)
-        self.qtable[self.state][action] = q_value
+
+        if self.gamma == 0.0:
+            q_value = self.qtable[self.state][action]
+            q_value += self.alpha * (reward - q_value)
+            self.qtable[self.state][action] = q_value
+
+        elif self.last_state != None:
+            max_q = self.get_max_q(self.state)
+            q_value = self.qtable[self.last_state][self.last_action]
+            q_value += self.alpha * (self.last_reward + self.gamma * max_q - q_value)
+            self.qtable[self.last_state][self.last_action] = q_value
+
         ## self.alpha *= 0.95
 
         self.last_action = action
