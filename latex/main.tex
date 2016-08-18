@@ -25,16 +25,39 @@ In case of an illegal action, the smartcap will stop for the respective time ste
 \section*{Task 2: Inform the Driving Agent}
 \textit{What states have you identified that are appropriate for modeling the smartcab and environment? Why do you believe each of these states to be appropriate for this problem?}\\
 
-I have identified the following states:
+The following states are required for learning the agent's policy:
 \begin{itemize}
     \item \textbf{next\_waypoint} \\
-        The prime goal of the agent is to reach the destination in time. A rational agent will thus follow the direction that the planer has calculated for the current step. States: \textit{left}, \textit{right}, \textit{forward}.
+        The prime goal of the agent is to reach the destination in time. A rational agent will thus follow the direction that the planer has calculated for the current step.\\
+        States: \textit{left}, \textit{right}, \textit{forward}.
     
     \item \textbf{light} \\
-        The second requirement for the agent is to follow the traffic rules. The state of the traffic light at the current intersection is thus crucial to avoid penalties. States: \textit{red}, \textit{green}.
+        The second requirement for the agent is to follow the traffic rules. The state of the traffic light at the current intersection is thus crucial to avoid penalties.\\
+        States: \textit{red}, \textit{green}.
 
-    \item \textbf{oncoming, left, right} \\
-        These inputs correspond to other cars, the agent encounters at the current intersection coming from the front, left or right. These inputs will report whether a car is approaching from the respective direction and in which direction it will continue (\textit{left}, \textit{right}, \textit{forward}). This state will enable the agent to avoid collisions (and the associated penalties) and to correctly learn the legal right turn at a red traffic light. States: \textit{none}, \textit{left}, \textit{right}, \textit{forward},
+    \item \textbf{oncoming} \\
+        This input reports whether another car is oncoming at the current intersection and the direction it will continue in. When the traffic light is green, the agent is not allowed to turn left if there is an oncoming
+        car that goes either \textit{forward} or \textit{right}.\\
+        States: \textit{none}, \textit{left}, \textit{right}, \textit{forward}.
+        
+    \item \textbf{left} \\
+        This input reports whether another car is coming from the left at the current intersection and the direction it will continue in. When the traffic light is red, the agent is not allowed to take a right turn if there
+        is a car coming from the left that goes \textit{forward}.\\
+        States: \textit{none}, \textit{left}, \textit{right}, \textit{forward}.
+    
+\end{itemize}
+
+The following inputs can safely be ignored by the agents:
+\begin{itemize}
+    \item \textbf{right} \\
+        This input reports whether another car is coming from the right at the current intersection and the direction it will continue in. When the traffic light is green, this other car has to wait and can safely be ignored. When the traffic light is red, cars coming from the right also do not interfere with the legal right turn. 
+        Because of this, this input can be ignored.\\
+        States: \textit{none}, \textit{left}, \textit{right}, \textit{forward}.
+
+    \item \textbf{deadline}\\
+        The deadline reports how many steps the agent is allowed to take in the current trial before the deadline
+        is reached and is decreased with every turn. Including the deadline does not make sense because the agent does not know its absolute position in the environment. Accordingly it does not know if a pending deadline will mean that it has to speed up (e.g. by breaking traffic rules) or that it is already close enough to not worry about it. Furthermore, including the deadline would increase the number of possible state by such a large amount that training the agent would not be possible anymore given the number of available trials/turns for training.\\
+        States: Integer number $<\approx 70$.
 
 \end{itemize}
 
@@ -42,11 +65,9 @@ I have identified the following states:
 
 The number of states in this environment can be computed by multiplying the number of states for each input:
 \begin{equation}
-n_{states} = n_{next\_waypoint} * n_{light} * n_{oncoming} * n_{left} * n_{right}  = 3 * 2 * 4 * 4 * 4 =  384
+n_{states} = n_{next\_waypoint} * n_{light} * n_{oncoming} * n_{left}  = 3 * 2 * 4 =  96
 \end{equation}
-There are 90 training trials, with about 30 steps per trial (random, based on initial distance to destination). Assuming that at least two encounters are necessary to train each state/action pair, the number of states trainable in this environment would be $90 * 30 / 4 / 2 \approx 337$. Thus, the number of trials/steps is too low to reliably train the agent using this state space. On the other hand, the number of other cars in the simulation is low which means that the states for \textit{oncoming}, \textit{left} and \textit{right} will be \textit{none} most of the time. This leaves $n_{states} = 6$ core states representing the basic behavior of the agent which will be easily learned given the number of available turns. Whether the agent will learn the remaining states involving other cars depends on the number of encounters which is pure chance. The result will be an agent that behaves well in the absence of other cars and will probably take illegal actions when other traffic is present.
-
-One possible way to reduce the number of states is to combine the inputs \textit{oncoming}, \textit{left} and \textit{right} into one state \textit{is\_other\_car\_present}. This leads to a very defensive agent that chooses not to move if any other car is encountered at an intersection. This strategy is advantageous if our main goal is to minimize the agent's total penalty, given the rarity of encounters with other cars.
+There are 90 training trials, with about 30 steps per trial (random, based on initial distance to destination). Assuming that at least two encounters are necessary to train each state/action pair, the number of states trainable in this environment would be $90 * 30 / 4 / 2 \approx 337$. Thus, the number of trials/steps is sufficient to reliably train the agent using this state space. Furthermore, the number of other cars in the simulation is low which means that the states for \textit{oncoming} and \textit{left} will be \textit{none} most of the time. This leaves $n_{states} = 6$ core states representing the basic behavior of the agent which will be easily learned given the number of available turns. Whether the agent will learn the remaining states involving other cars depends on the number of encounters during training which is pure chance. If not all of these additional states are encountered the result will be an agent that behaves well in the absence of other cars and could potentially take illegal actions when other traffic is present.
 
 \section*{Task 3: Implement a Q-Learning Driving Agent}
 \textit{What changes do you notice in the agent's behavior when compared to the basic driving agent when random actions were always taken? Why is this behavior occurring?}\\
@@ -88,17 +109,6 @@ The discounting factor $\gamma$ determines how strongly future rewards are incor
 
 Note that future awards are of limited utility in this environment as the next state the agent encounters is randomly generated by the environment. Increasing $\gamma$ will therefore tend to introduce more randomness into the Q-table (which might be advantageous in some cases).
 
-\subsubsection{Reducing the number of states}
-As discussed before, including the inputs for sensing other cars (\textit{oncoming}, \textit{left}, \textit{right}) into the agent's state
-leads to a rather large state space. Because there are only a few other cars in the simulation, the agent will probably not encounter all states during the training trials which could lead to random actions taken during the evaluation trials. One possible solution is to combine all of these states into one state \textit{is\_other\_car\_present} (States: \textit{true}, \textit{false}), which reduces the number of states to 
-\begin{equation}
-n_{states} = n_{next\_waypoint} * n_{light} * n_{is\_other\_car\_present} = 3 * 2 * 2 = 12.
-\end{equation}
-
-The advantage of this approach is that the drastically reduced number of states leads to a higher probability that all states are encountered during training, thus reducing the number of random actions taken when the policy has been learned. Furthermore, the agent
-will associate the sighting of another car with a lower reward because all traffic rule violations involving other cars are incorporated into the Q-value when \textit{is\_other\_car\_present} is true. This will lead to a more defensive agent (it will choose to not move if another car is present) which in turn results in a lower total penalty.
-Both the full state space as well as the one with reduced number of states are compared and discussed below.
-
 \subsection{Metrics}
 \begin{itemize}
 
@@ -125,39 +135,25 @@ In order to find the optimal values for $\gamma$ and $\alpha$, a grid search is 
 \subsection{Results}
 \textit{Report the different values for the parameters tuned in your basic implementation of Q-Learning. For which set of parameters does the agent perform best? How well does the final driving agent perform?}\\
 
-The results of the grid search over $\gamma$ and $\alpha$ for the full state space are shown in Fig.~\ref{fig:full_state_space}. Performance is worst for high $\gamma$ and high $\alpha$. Here, future rewards, which are basically random, have a high influence on the learning algorithm. When this is combined with a high learning rate, the agent has a high randomness in its decisions. This can be seen in the relatively low success rate (0.89), high penalty per step (0.22) and especially in the low efficiency (0.43). The low efficiency means that the agent does not follow directions closely but instead meanders around before reaching the destination.
+The results of the grid search over $\gamma$ and $\alpha$ for the full state space are shown in Fig.~\ref{fig:full_state_space}. Performance is worst for high $\gamma$ and high $\alpha$. Here, future rewards, which are basically random, have a high influence on the learning algorithm. When this is combined with a high learning rate, the agent has a high randomness in its decisions. This can be seen in the relatively low success rate (0.94), high penalty per step (0.17) and especially in the low efficiency (0.47). The low efficiency means that the agent does not follow directions closely but instead meanders around before reaching the destination.
 
-Success rate increases with reduced gamma and interestingly peaks for $\gamma = 0.25$ (0.99) before decreasing slightly again (0.97 - 0.98). Both penalty per step and efficiency clearly have the best values for $\gamma \le 0.125$ ($\approx$ 0.01 and $\approx 1$ respectively). This means that the relatively high success rate for $\gamma = 0.25$ is achieved by the agent by violating traffic rules (penalty per step $\approx$ 0.03). The differences for $\gamma = 0.125$ and $\gamma = 0.0$ are small for all three metrics. This would suggest that the simpler implementation for $\gamma = 0.0$ can be used. 
+Success rate increases with reduced gamma and approaches 100\% for $\gamma <= 0.25$. Both penalty per step and efficiency clearly have the best values for $\gamma \le 0.125$ ($\le 0.001$ and $\ge 0.99$ respectively). The differences for $\gamma = 0.125$ and $\gamma = 0.0$ are small for all three metrics which suggests that the simpler implementation for $\gamma = 0.0$ could also be used. 
 
-The influence of $\alpha$ is less pronounced than that of $\gamma$ but can be summarized as follows: Higher $\alpha$ values lead to an improvement of all three metrics for $\gamma = 0$ but will decrease them for $\gamma > 0$. 
+The influence of $\alpha$ is less pronounced than that of $\gamma$ but can be summarized as follows: For $\gamma \ge 0.25$ increasing $\gamma$ will degrade performance. For $\gamma \le 0.125$ the learning rate has nearly no influence on success rate and efficiency while tending to decrease penalty per step. 
 
 \begin{figure}[ht]
     \centering
     \makebox[\textwidth][c]
     {
-        \includegraphics[width=0.4\linewidth]{fig/success_rate_full_state_space}
-        \includegraphics[width=0.4\linewidth]{fig/penalty_full_state_space}
-        \includegraphics[width=0.4\linewidth]{fig/efficiency_full_state_space}
+        \includegraphics[width=0.4\linewidth]{fig/success}
+        \includegraphics[width=0.4\linewidth]{fig/penalty}
+        \includegraphics[width=0.4\linewidth]{fig/efficiency}
     }
     \caption{Results of the grid search over parameters $\gamma$ and $\alpha$ for the full state space.}
     \label{fig:full_state_space}
 \end{figure}
 
-The results for the reduced state space are displayed in Fig.~\ref{fig:reduced_state_space}. As discussed above, the inputs \textit{oncoming}, \textit{left} and \textit{right} are combined into one state \textit{is\_other\_car\_present}. As in the case of the full state space, the performance of the agent is improved for decreasing $\gamma$. For $\gamma \le 0.25$ the success rate approaches 100\%. The penalty per step is smallest for $\lambda = 0.25$ ($\approx 0.0004 - 0.0012$). The highest efficiency can be achieved for $\gamma \le 0.25$ and $\alpha >= 0.5$.
-
-\begin{figure}[ht]
-    \centering
-    \makebox[\textwidth][c]
-    {
-        \includegraphics[width=0.4\linewidth]{fig/success_rate_reduced_state_space}
-        \includegraphics[width=0.4\linewidth]{fig/penalty_reduced_state_space}
-        \includegraphics[width=0.4\linewidth]{fig/efficiency_reduced_state_space}
-    }
-    \caption{Results of the grid search over parameters $\gamma$ and $\alpha$ for the reduced state space.}
-    \label{fig:reduced_state_space}
-\end{figure}
-
-Based on these result I have implemented the final version of the agent with the reduced state space, $\gamma = 0.125$ and $\alpha = 0.75$. The first 90 trials are used for exploration $\epsilon = 1$, while the last ten trials use the q-table ($\epsilon = 0$).
+Based on these result I have implemented the final version of the agent with $\gamma = 0.125$ and $\alpha~=~0.25$, where perfect scores where found during grid search. The first 90 trials are used for exploration ($\epsilon = 1$), while the last ten trials use the q-table ($\epsilon = 0$).
 
 \subsection{Discussion}
 \textit{Does your agent get close to finding an optimal policy, i.e. reach the destination in the minimum possible time, and not incur any penalties? How would you describe an optimal policy for this problem?}
