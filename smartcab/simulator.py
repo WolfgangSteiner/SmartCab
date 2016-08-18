@@ -208,7 +208,3 @@ class Simulator(object):
             total_distance += result["total_distance"]
 
         return [float(success_count) / n, float(total_penalty) / total_steps, float(total_distance) / total_steps]
-
-    def print_stats(self):
-        for i in (10, 20, 30, 40, 50):
-            print self.env.primary_agent.alpha_factor, self.env.primary_agent.gamma, self.env.primary_agent.epsilon_factor, "Last ", i, "trials: ", self.calc_stats(i)
