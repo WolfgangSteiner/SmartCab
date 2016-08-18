@@ -19,7 +19,6 @@ class LearningAgent(Agent):
         self.qtable = {}
         self.diminish_alpha = False
         self.diminish_epsilon = False
-        self.use_reduced_state_space = True
 
         self.alpha = 0.75
         self.alpha_factor = 0.98
@@ -103,13 +102,9 @@ class LearningAgent(Agent):
         self.next_waypoint = self.planner.next_waypoint()  # from route planner, also displayed by simulator
         inputs = self.env.sense(self)
         deadline = self.env.get_deadline(self)
-        # TODO: Update state
 
-        if self.use_reduced_state_space:
-            is_other_car_present = inputs['oncoming'] != None or inputs['right'] != None or inputs['left'] != None
-            self.state = (inputs['light'], is_other_car_present, self.next_waypoint)
-        else:
-            self.state = (inputs['light'], inputs['oncoming'], inputs['right'], inputs['left'], self.next_waypoint)
+        # TODO: Update state
+        self.state = (inputs['light'], inputs['oncoming'], inputs['left'], self.next_waypoint)
 
         # TODO: Select action according to your policy
         valid_actions = [None, 'forward', 'left', 'right']
@@ -152,10 +147,10 @@ def run():
     a = e.create_agent(LearningAgent)  # create agent
     e.set_primary_agent(a, enforce_deadline=True)  # specify agent to track
 
-    sim = Simulator(e, update_delay=0.05, display=True)  # create simulator (uses pygame when display=True, if available)
+    sim = Simulator(e, update_delay=0.01, display=True)  # create simulator (uses pygame when display=True, if available)
     a.diminish_epsilon = False
     a.diminish_alpha = False
-    a.alpha = 0.750
+    a.alpha = 0.250
     a.gamma = 0.125
     sim.run(n_trials=100)  # run for a specified number of trials
 
