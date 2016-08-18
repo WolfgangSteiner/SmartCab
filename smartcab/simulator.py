@@ -61,12 +61,6 @@ class Simulator(object):
                 self.display = False
                 print "Simulator.__init__(): Error initializing GUI objects; display disabled.\n{}: {}".format(e.__class__.__name__, e)
 
-    def run_experiments(self, n_experiments=10):
-        self.current_experiment_results = []
-        for i in range(0,n_experiments):
-            self.run(n_trials=100)
-
-
     def run(self, n_trials=1):
         self.quit = False
         for trial in xrange(n_trials):

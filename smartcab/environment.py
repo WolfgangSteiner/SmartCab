@@ -266,9 +266,6 @@ class Agent(object):
     def reset(self, destination=None):
         pass
 
-    def new_experiment(self):
-        pass
-
     def update(self, t):
         pass
 
